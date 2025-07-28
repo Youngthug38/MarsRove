@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Planet Post - AI Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0c111d;
+            overflow-x: hidden;
+        }
+        
+        /* --- Animated Background --- */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #0c111d;
+            overflow: hidden;
+        }
+
+        @keyframes move-stars {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        .stars {
+            background: black url(https://www.transparenttextures.com/patterns/stardust.png);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+            animation: move-stars 200s linear infinite;
+        }
+
+        .planet {
+            position: absolute;
+            border-radius: 50%;
+            background-size: cover;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1), inset -20px -20px 50px rgba(0,0,0,0.5);
+        }
+        .planet1 {
+            width: 200px;
+            height: 200px;
+            background-image: linear-gradient(45deg, #d35400, #c0392b); /* Reddish planet */
+            top: 15%;
+            left: 10%;
+            animation: spin 60s linear infinite;
+        }
+        .planet2 {
+            width: 80px;
+            height: 80px;
+            background-image: linear-gradient(45deg, #00c6ff, #0072ff);
+            top: 60%;
+            right: 5%;
+            animation: spin 30s linear infinite reverse;
+        }
+        
+        @keyframes rocket-fly {
+            0% { transform: translate(-200px, 100vh) rotate(45deg); }
+            100% { transform: translate(100vw, -200px) rotate(45deg); }
+        }
+
+        .rocket {
+            position: absolute;
+            width: 50px;
+            height: 100px;
+            bottom: 0;
+            left: 0;
+            z-index: 10;
+            animation: rocket-fly 30s linear infinite;
+            background: linear-gradient(to top, #ff416c, #ff4b2b);
+            clip-path: polygon(50% 0%, 100% 75%, 100% 100%, 0 100%, 0 75%);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- UI Styles --- */
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .control-bubble {
+            transition: all 0.3s ease;
+            border: 2px solid #4a5568;
+        }
+        .control-bubble.selected {
+            background-color: #c0392b; /* Red */
+            border-color: #f5b7b1; /* Light Red */
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+        
+        #time-warp-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, #8a2be2, #4b0082);
+            border: 22px solid #c39cf4;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+        }
+        #time-warp-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(138, 43, 226, 1);
+        }
+        
+        .tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s; }
+        .has-tooltip:hover .tooltip { visibility: visible; opacity: 1; }
+
+        /* Fix for the tooltip size */
+        #rover-info-tooltip {
+            max-width: 250px; /* Adjust this value as needed */
+            width: auto; /* Allow width to shrink based on content */
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #c0392b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e74c3c; }
+        #postcard { background-size: cover; background-position: center; }
+    </style>
+</head>
+<body class="text-white antialiased">
+
+    <div class="background-container">
+        <div class="stars"></div>
+        <div class="planet planet1"></div>
+        <div class="planet planet2"></div>
+        <div class="rocket"></div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8 relative z-10">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold font-orbitron text-red-400 drop-shadow-lg">Red Planet Post</h1>
+            <p class="text-gray-300 mt-2">Your AI-powered portal to the surface of Mars.</p>
+        </header>
+
+        <div class="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg mb-8 max-w-6xl mx-auto border border-gray-700">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <div class="relative"> <div class="flex items-center gap-2 mb-3">
+                        <label class="block text-lg font-medium text-gray-300 font-orbitron">1. Select Rover</label>
+                        <div class="has-tooltip">
+                            <span class="cursor-help text-gray-400 text-2xl">ⓘ</span>
+                            <div id="rover-info-tooltip" class="tooltip absolute bottom-full left-0 mb-2 w-72 bg-gray-900 text-white text-sm rounded-lg p-3 border border-gray-600 shadow-lg z-10">
+                                </div>
+                        </div>
+                    </div>
+                    <div id="rover-selector" class="flex flex-wrap gap-3">
+                        <div class="control-bubble selected p-3 rounded-full cursor-pointer" data-rover="perseverance">Perseverance</div>
+                        <div class="control-bubble p-3 rounded-full cursor-pointer" data-rover="curiosity">Curiosity</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-lg font-medium text-gray-300 mb-3 font-orbitron">2. Search by Day</label>
+                    <p class="text-gray-400 text-sm mb-4">A "Sol" is a Martian day, which is slightly longer than an Earth day (24 hours, 39 minutes).</p>
+                    <div class="flex flex-col gap-3">
+                        <input type="number" id="sol-input" min="0" class="w-full bg-gray-700 border-gray-600 rounded-md p-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Enter a Sol number...">
+                        <button id="search-sol-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 shadow-md">Search Sol</button>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <label class="block text-lg font-medium text-gray-300 mb-3 font-orbitron">3. AI Explorer</label>
+                    <div class="flex flex-col gap-3">
+                        <button id="latest-photos-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 shadow-md">Latest Photos</button>
+                        <button id="time-warp-btn" class="w-full text-white font-bold py-2 px-4 rounded-md transition-transform duration-300 shadow-lg text-lg">TIME WARP!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main id="gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></main>
+        <div id="status-message" class="text-center text-gray-400 py-10 text-xl" style="display: none;"></div>
+    </div>
+
+    <div id="postcard-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none z-20">
+        <div class="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
+            <div id="postcard-content" class="w-full md:w-2/3 p-4 flex flex-col">
+                <div id="postcard" class="relative w-full aspect-video rounded-md overflow-hidden flex-grow bg-gray-900">
+                    <div class="absolute bottom-0 left-0 right-0 p-4 bg-black bg-opacity-50 text-white">
+                        <p class="text-lg font-bold" id="postcard-rover"></p>
+                        <p class="text-sm" id="postcard-sol-date"></p>
+                        <p class="text-xs" id="postcard-camera"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full md:w-1/3 p-6 bg-gray-900 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-2xl font-orbitron text-red-400 mb-4">Create Your Postcard</h3>
+                    <label for="postcard-message" class="block text-sm font-medium text-gray-300 mb-2">Your Message:</label>
+                    <textarea id="postcard-message" rows="6" class="w-full bg-gray-700 border-gray-600 rounded-md p-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition" placeholder="Greetings from the Red Planet..."></textarea>
+                </div>
+                <div class="mt-6 space-y-3">
+                    <button id="download-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Download Postcard</button>
+                    <button id="close-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // *** IMPORTANT: NASA_API_KEY is REMOVED from client-side code and handled by Netlify Function ***
+        // Original line: const NASA_API_KEY = "ddKjodmRksMIoaLRfsly0RY0fBg3JM8bf2yEHPGZ"; // This line is now handled by Netlify Function
+
+        const roverSelector = document.getElementById('rover-selector');
+        const timeWarpBtn = document.getElementById('time-warp-btn');
+        const latestPhotosBtn = document.getElementById('latest-photos-btn');
+        const searchSolBtn = document.getElementById('search-sol-btn');
+        const solInput = document.getElementById('sol-input');
+        const galleryContainer = document.getElementById('gallery-container');
+        const statusMessage = document.getElementById('status-message');
+        const roverInfoTooltip = document.getElementById('rover-info-tooltip');
+        const postcardModal = document.getElementById('postcard-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const postcard = document.getElementById('postcard');
+        const postcardRover = document.getElementById('postcard-rover');
+        const postcardSolDate = document.getElementById('postcard-sol-date');
+        const postcardCamera = document.getElementById('postcard-camera');
+        const postcardMessageTextarea = document.getElementById('postcard-message');
+
+        let selectedRover = 'perseverance';
+        let roverManifests = {};
+        let currentPhotoData = null;
+
+        async function getRoverManifest(roverName) {
+            if (roverManifests[roverName]) {
+                updateRoverInfo(roverName);
+                return roverManifests[roverName];
+            }
+            
+            displayMessage(`Accessing ${roverName}'s mission logs...`, true);
+            galleryContainer.innerHTML = '';
+
+            // Calling your Netlify Function to get manifest data
+            const apiUrl = `/.netlify/functions/nasa-proxy?rover=${roverName}`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    // It's good to read the error from the proxy if it sends one
+                    const errorData = await response.json(); 
+                    throw new Error(`Proxy Error: ${errorData.error || response.statusText}`);
+                }
+                const data = await response.json();
+                roverManifests[roverName] = data.photo_manifest;
+                updateRoverInfo(roverName);
+                return data.photo_manifest;
+            } catch (error) {
+                console.error(`Failed to fetch manifest for ${roverName} via proxy:`, error);
+                displayMessage(`Could not access mission logs for ${roverName}. Please check console for details.`);
+                return null;
+            }
+        }
+
+        async function fetchMarsPhotos(sol) {
+            displayMessage(`Traveling to Sol ${sol} for ${selectedRover}...`, true);
+            galleryContainer.innerHTML = '';
+
+            // Calling your Netlify Function to get photos by Sol
+            const apiUrl = `/.netlify/functions/nasa-proxy?rover=${selectedRover}&sol=${sol}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Proxy Error: ${errorData.error || response.statusText}`);
+                }
+                const data = await response.json();
+
+                if (data.photos && data.photos.length > 0) {
+                    displayPhotos(data.photos);
+                    statusMessage.style.display = 'none';
+                } else {
+                    displayMessage(`No photos found for ${selectedRover} on Sol ${sol}. Try another day or the Time Warp!`);
+                }
+            } catch (error) {
+                console.error("Fetch Error via proxy:", error);
+                displayMessage(`Travel malfunction! Failed to fetch photos.`);
+            }
+        }
+        
+        async function fetchLatestPhotos() {
+            displayMessage(`Fetching latest photos from ${selectedRover}...`, true);
+            galleryContainer.innerHTML = '';
+            
+            // Calling your Netlify Function to get latest photos
+            const apiUrl = `/.netlify/functions/nasa-proxy?rover=${selectedRover}&latest=true`;
+            
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Proxy Error: ${errorData.error || response.statusText}`);
+                }
+                const data = await response.json();
+
+                if (data.latest_photos && data.latest_photos.length > 0) {
+                    displayPhotos(data.latest_photos);
+                    statusMessage.style.display = 'none';
+                } else {
+                    displayMessage(`No recent photos available for ${selectedRover}. Try the Time Warp!`);
+                }
+            } catch (error) {
+                console.error("Fetch Error via proxy:", error);
+                displayMessage(`Could not fetch latest photos.`);
+            }
+        }
+
+        function displayMessage(message, isLoading = false) {
+            statusMessage.textContent = message;
+            statusMessage.style.display = 'block';
+            statusMessage.innerHTML = isLoading 
+                ? `${message} <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto mt-4"></div>`
+                : message;
+        }
+
+        function displayPhotos(photos) {
+            galleryContainer.innerHTML = '';
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800/70 backdrop-blur-sm rounded-lg overflow-hidden shadow-lg transform hover:scale-105 transition-transform duration-300 cursor-pointer';
+                card.innerHTML = `
+                    <img src="${photo.img_src}" alt="Mars Rover Photo" class="w-full h-48 object-cover" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1a202c/e74c3c?text=Image+Not+Found';">
+                    <div class="p-4">
+                        <p class="text-sm text-gray-400">Sol: ${photo.sol}</p>
+                        <p class="text-xs text-gray-500">${photo.camera.full_name}</p>
+                    </div>
+                `;
+                card.addEventListener('click', () => openPostcardModal(photo));
+                galleryContainer.appendChild(card);
+            });
+        }
+
+        function updateRoverInfo(roverName) {
+            const manifest = roverManifests[roverName];
+            if (manifest) {
+                roverInfoTooltip.innerHTML = `
+                    <strong class="font-bold text-red-400">${manifest.name}</strong><br>
+                    Landed: ${manifest.landing_date}<br>
+                    Last Photo: ${manifest.max_date}<br>
+                    Total Sols: ${manifest.max_sol}<br>
+                    Status: <span class="font-semibold ${manifest.status === 'active' ? 'text-green-400' : 'text-yellow-400'}">${manifest.status}</span>
+                `;
+            } else {
+                roverInfoTooltip.innerHTML = 'Fetching rover data...';
+            }
+        }
+
+        roverSelector.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('control-bubble') && e.target.dataset.rover !== selectedRover) {
+                selectedRover = e.target.dataset.rover;
+                roverSelector.querySelectorAll('.control-bubble').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                await getRoverManifest(selectedRover); 
+                timeWarp(); 
+            }
+        });
+
+        async function timeWarp() {
+            const manifest = await getRoverManifest(selectedRover);
+            if (manifest && manifest.photos && manifest.photos.length > 0) {
+                const daysWithPhotos = manifest.photos.filter(day => day.total_photos > 0);
+                if (daysWithPhotos.length > 0) {
+                    const randomPhotoDay = daysWithPhotos[Math.floor(Math.random() * daysWithPhotos.length)];
+                    const randomSol = randomPhotoDay.sol;
+                    fetchMarsPhotos(randomSol);
+                } else {
+                    displayMessage(`It appears ${selectedRover} has no photos in its mission log.`);
+                }
+            } else {
+                displayMessage(`Mission logs for ${selectedRover} seem to be unavailable.`);
+            }
+        }
+        
+        function handleSolSearch() {
+            const sol = solInput.value;
+            if (sol && sol >= 0) {
+                fetchMarsPhotos(sol);
+            } else {
+                displayMessage("Please enter a valid Sol number (0 or greater).");
+            }
+        }
+
+        function openPostcardModal(photo) { 
+            currentPhotoData = photo;
+            postcard.style.backgroundImage = `url('${photo.img_src}')`;
+            postcardRover.textContent = `Rover: ${photo.rover.name}`;
+            postcardSolDate.textContent = `Sol: ${photo.sol} | Earth Date: ${photo.earth_date}`;
+            postcardCamera.textContent = `Camera: ${photo.camera.full_name}`;
+            postcardMessageTextarea.value = '';
+            postcardModal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+        function closePostcardModal() { 
+            postcardModal.classList.add('opacity-0', 'pointer-events-none');
+            currentPhotoData = null;
+        }
+        function downloadPostcard() { 
+            const postcardElement = document.createElement('div');
+            postcardElement.style.width = '1280px';
+            postcardElement.style.height = '720px';
+            postcardElement.style.position = 'absolute';
+            postcardElement.style.left = '-9999px';
+            const message = postcardMessageTextarea.value;
+            
+            // CRITICAL CHANGE: Proxy image through Netlify Function
+            const proxiedImageUrl = `/.netlify/functions/nasa-proxy?image_url=${encodeURIComponent(currentPhotoData.img_src)}`;
+
+            postcardElement.innerHTML = `<div style="width: 100%; height: 100%; display: flex; background: #1a202c; color: white; font-family: 'Roboto', sans-serif;"><div style="width: 60%; height: 100%; background-image: url('${proxiedImageUrl}'); background-size: cover; background-position: center;"></div><div style="width: 40%; height: 100%; padding: 40px; display: flex; flex-direction: column; background-color: #2d3748;"><h2 style="font-family: 'Orbitron', sans-serif; font-size: 32px; color: #c0392b; margin-bottom: 20px;">GREETINGS FROM MARS</h2><p style="font-size: 20px; flex-grow: 1; white-space: pre-wrap; word-wrap: break-word;">${message}</p><div style="border-top: 1px solid #4a5568; padding-top: 20px; font-size: 14px; color: #a0aec0;"><p><strong>Rover:</strong> ${currentPhotoData.rover.name}</p><p><strong>Sol:</strong> ${currentPhotoData.sol}</p><p><strong>Earth Date:</strong> ${currentPhotoData.earth_date}</p><p><strong>Camera:</strong> ${currentPhotoData.camera.full_name}</p></div></div></div>`;
+            document.body.appendChild(postcardElement);
+            
+            html2canvas(postcardElement, { useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `postcard-from-mars-sol-${currentPhotoData.sol}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                document.body.removeChild(postcardElement);
+            }).catch(err => {
+                console.error("Could not generate postcard:", err);
+                alert("Sorry, could not generate the postcard. The image might be protected by CORS policy.");
+                document.body.removeChild(postcardElement);
+            });
+        }
+
+        timeWarpBtn.addEventListener('click', timeWarp);
+        latestPhotosBtn.addEventListener('click', fetchLatestPhotos);
+        searchSolBtn.addEventListener('click', handleSolSearch);
+        closeModalBtn.addEventListener('click', closePostcardModal);
+        downloadBtn.addEventListener('click', downloadPostcard);
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePostcardModal(); });
+        
+        window.onload = () => {
+             // Fetch manifest for the default rover on load to populate the info box
+             getRoverManifest(selectedRover).then(() => {
+                timeWarp(); // Then perform the initial time warp
+             });
+        };
+    </script>
+</body>
+</html>
